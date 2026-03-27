@@ -4,3 +4,5 @@ dist
 backups
 .env
 !.env.example
+data/wizard.db-shm
+data/wizard.db-wal

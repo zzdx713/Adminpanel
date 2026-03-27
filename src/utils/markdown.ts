@@ -12,7 +12,7 @@ const markdownRenderer = new MarkdownIt({
   html: true,
   linkify: true,
   typographer: true,
-  breaks: false,
+  breaks: true,
 })
 
 markdownRenderer.enable([
