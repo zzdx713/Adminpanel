@@ -1,9 +1,12 @@
+import { readFileSync } from 'fs'
 import WebSocket from 'ws'
 import { randomUUID } from 'crypto'
 import EventEmitter from 'events'
 import { createHash, generateKeyPairSync, sign } from 'crypto'
 
-const APP_VERSION = process.env.VITE_APP_VERSION || process.env.npm_package_version || ''
+const APP_VERSION = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf-8'),
+).version || ''
 
 export class OpenClawGateway extends EventEmitter {
   constructor(url, authToken, authPassword) {

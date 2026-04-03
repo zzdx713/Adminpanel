@@ -433,7 +433,6 @@ Then configure your `.env` file:
 
 ```env
 VITE_APP_TITLE=OpenClaw Admin
-VITE_APP_VERSION=0.2.4
 OPENCLAW_WS_URL=ws://localhost:18789
 OPENCLAW_AUTH_TOKEN=
 OPENCLAW_AUTH_PASSWORD=

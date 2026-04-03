@@ -433,7 +433,6 @@ cp .env.example .env
 
 ```env
 VITE_APP_TITLE=OpenClaw Admin
-VITE_APP_VERSION=0.2.4
 OPENCLAW_WS_URL=ws://localhost:18789
 OPENCLAW_AUTH_TOKEN=
 OPENCLAW_AUTH_PASSWORD=      # Gateway 密码，与 Token 二选一即可
