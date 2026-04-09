@@ -681,6 +681,7 @@ function getExistingBindingsForAgent(agentId: string): AgentBinding[] {
     if (binding.agentId === agentId && binding.match) {
       bindings.push({
         agentId,
+        accountId: binding.match.accountId || agentId,
         channel: binding.match.channel,
         peerId: binding.match.peer?.id || '',
         peerKind: (binding.match.peer?.kind as 'direct' | 'group' | 'channel' | 'dm' | 'acp') || 'group',
@@ -695,6 +696,7 @@ function handleAddEditTeamBinding() {
   const agentId = String(editTeamMemberOptions.value[0]?.value || '')
   editTeamForm.value.bindings.push({
     agentId,
+    accountId: agentId,
     channel: 'feishu',
     peerId: '',
     peerKind: 'group',
@@ -819,6 +821,7 @@ async function updateTeamConfig(scenario: WizardScenario) {
       const newBinding = {
         match: {
           channel: binding.channel,
+          accountId: binding.accountId || binding.agentId,
           peer: binding.peerId ? {
             kind: binding.peerKind || 'group',
             id: binding.peerId,

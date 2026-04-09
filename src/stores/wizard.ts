@@ -78,6 +78,7 @@ export interface GeneratedAgent {
 
 export interface AgentBinding {
   agentId: string
+  accountId?: string
   channel: string
   peerId?: string
   peerKind?: 'direct' | 'group' | 'channel' | 'dm' | 'acp'

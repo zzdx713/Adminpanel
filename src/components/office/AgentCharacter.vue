@@ -81,6 +81,12 @@ const formattedTokens = computed(() => {
   return String(tokens)
 })
 
+// Check if avatar URL is valid (supports both HTTP URLs and relative paths)
+const isValidAvatarUrl = (url: string | undefined) => {
+  if (!url) return false
+  return typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/') || url.startsWith('avatars/'))
+}
+
 function handleSelect() {
   if (expanded.value) {
     officeStore.selectAgent(null)
@@ -133,6 +139,13 @@ function handleDelete() {
         <div class="agent-avatar-ring">
           <div class="agent-avatar">
             <span v-if="agent.emoji" class="agent-emoji">{{ agent.emoji }}</span>
+            <img
+              v-else-if="isValidAvatarUrl(agent.avatar)"
+              :src="agent.avatar"
+              class="agent-avatar-image"
+              :alt="agent.name"
+              @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }"
+            />
             <NAvatar v-else round :style="{ background: agent.color }">
               <NIcon :component="PersonOutline" />
             </NAvatar>
@@ -338,6 +351,13 @@ function handleDelete() {
 
 .agent-emoji {
   font-size: 32px;
+}
+
+.agent-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .agent-character.is-compact .agent-emoji {

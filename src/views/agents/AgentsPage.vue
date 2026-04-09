@@ -201,6 +201,12 @@ const tableColumns = computed<DataTableColumns<AgentInfo>>(() => [
       const identity = row.identity;
       const emoji = identity?.emoji;
       const avatar = identity?.avatarUrl || identity?.avatar;
+      
+      // Helper to validate avatar URL
+      const isValidAvatarUrl = (url: string | undefined) => {
+        if (!url) return false
+        return typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/') || url.startsWith('avatars/'))
+      }
 
       return h(
         NSpace,
@@ -209,6 +215,13 @@ const tableColumns = computed<DataTableColumns<AgentInfo>>(() => [
           default: () => [
             emoji
               ? h("span", { style: "font-size: 24px;" }, emoji)
+              : isValidAvatarUrl(avatar)
+              ? h("img", {
+                  src: avatar,
+                  style: "width: 32px; height: 32px; border-radius: 50%; object-fit: cover;",
+                  alt: identity?.name || row.name || row.id,
+                  onError: (e: Event) => { (e.target as HTMLImageElement).style.display = 'none' }
+                })
               : h(
                   NAvatar,
                   {
@@ -492,7 +505,7 @@ function openIdentityModal(agent: AgentInfo) {
 function openModelModal(agent: AgentInfo) {
   selectedAgent.value = agent;
   modelForm.value = {
-    model: agent.model || "",
+    model: "",
   };
   showModelModal.value = true;
 }
@@ -591,10 +604,9 @@ async function handleSetModel() {
 
   submitting.value = true;
   try {
-    const modelValue = modelForm.value.model;
     await agentStore.setAgentModel({
       agentId: selectedAgent.value.id,
-      model: modelValue || null,
+      model: modelForm.value.model || undefined,
     });
     message.success(t("pages.agents.messages.modelSaved"));
     showModelModal.value = false;
