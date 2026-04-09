@@ -987,6 +987,22 @@ export default {
         providers: 'Top Providers',
         tools: 'Top Tools',
       },
+      drilldown: {
+        structureTitle: 'Usage Structure Detail',
+        structureSubtitle: 'Click any segment to drill down into its session details',
+        total: 'Total',
+        records: '{count} records',
+        cols: {
+          label: 'Session Label',
+          input: 'Input',
+          output: 'Output',
+          cacheRead: 'Cache Read',
+          cacheWrite: 'Cache Write',
+          total: 'Total',
+          messages: 'Messages',
+          channel: 'Channel',
+        },
+      },
       sessions: {
         columns: {
           channel: 'Channel',

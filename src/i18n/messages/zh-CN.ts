@@ -990,6 +990,22 @@ export default {
         providers: 'Top Providers',
         tools: 'Top Tools',
       },
+      drilldown: {
+        structureTitle: 'Usage 结构详情',
+        structureSubtitle: '点击各 segment 可下钻查看对应的会话明细',
+        total: '合计',
+        records: '共 {count} 条记录',
+        cols: {
+          label: '会话标签',
+          input: '输入',
+          output: '输出',
+          cacheRead: '缓存读',
+          cacheWrite: '缓存写',
+          total: '总计',
+          messages: '消息数',
+          channel: '频道',
+        },
+      },
       sessions: {
         columns: {
           channel: '频道',

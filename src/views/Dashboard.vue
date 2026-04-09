@@ -24,6 +24,7 @@ import {
 } from '@vicons/ionicons5'
 import { useI18n } from 'vue-i18n'
 import StatCard from '@/components/common/StatCard.vue'
+import DrilldownModal from '@/components/common/DrilldownModal.vue'
 import { useWebSocketStore } from '@/stores/websocket'
 import { formatRelativeTime } from '@/utils/format'
 import type {
@@ -45,6 +46,8 @@ const { t, locale } = useI18n()
 const loading = ref(true)
 const refreshing = ref(false)
 const usageError = ref<string | null>(null)
+const structureDrilldownShow = ref(false)
+const structureDrilldownTitle = ref('')
 const lastUpdatedAt = ref<number | null>(null)
 const rangePreset = ref<RangePreset>('7d')
 const usageMode = ref<UsageMode>('tokens')
@@ -137,6 +140,31 @@ const segmentTotal = computed(() => {
   const sum = usageSegments.value.reduce((acc, item) => acc + item.value, 0)
   return sum > 0 ? sum : 1
 })
+
+const structureDrilldownSegments = computed(() => {
+  return usageSegments.value.map((seg) => ({
+    ...seg,
+    records: sessionsUsageResult.value?.sessions.filter((s) => {
+      const usage = s.usage
+      if (!usage) return false
+      return (() => {
+        switch (seg.key) {
+          case 'input': return usage.input > 0
+          case 'output': return usage.output > 0
+          case 'cacheRead': return usage.cacheRead > 0
+          case 'cacheWrite': return usage.cacheWrite > 0
+          default: return false
+        }
+      })()
+    }) ?? [],
+  }))
+})
+
+function openStructureDrilldown() {
+  if (!sessionsUsageResult.value?.sessions.length) return
+  structureDrilldownTitle.value = t('pages.dashboard.drilldown.structureTitle')
+  structureDrilldownShow.value = true
+}
 
 const dailyUsage = computed(() => {
   const fromSessions = sessionsUsageResult.value?.aggregates?.daily || []
@@ -913,7 +941,12 @@ function viewModels() {
             </div>
 
             <div class="segment-list">
-              <div v-for="segment in usageSegments" :key="`${segment.key}-row`" class="segment-row">
+              <div
+                v-for="segment in usageSegments"
+                :key="`${segment.key}-row`"
+                class="segment-row segment-row-clickable"
+                @click="openStructureDrilldown"
+              >
                 <div class="segment-row-label">
                   <span class="segment-dot" :style="{ background: segment.color }" />
                   <span>{{ segment.label }}</span>
@@ -997,6 +1030,14 @@ function viewModels() {
       </NCard>
 
     </div>
+
+    <DrilldownModal
+      v-model:show="structureDrilldownShow"
+      :title="structureDrilldownTitle"
+      :subtitle="t('pages.dashboard.drilldown.structureSubtitle')"
+      :segments="structureDrilldownSegments"
+      :usage-mode="usageMode"
+    />
   </NSpin>
 </template>
 
@@ -1217,6 +1258,15 @@ function viewModels() {
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
+}
+.segment-row-clickable {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 4px;
+  transition: background 0.15s;
+}
+.segment-row-clickable:hover {
+  background: var(--n-color-hover, rgba(0, 0, 0, 0.04));
 }
 
 .segment-row-label {
