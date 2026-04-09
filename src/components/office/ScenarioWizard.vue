@@ -1208,13 +1208,15 @@ async function handleNext() {
         const existing = existingBindingsMap.get(agentId)
         if (existing) {
           const channel = existing.match?.channel || 'feishu'
+          const accountId = existing.match?.accountId || ''
           const peerId = existing.match?.peer?.id || ''
           const peerKind = existing.match?.peer?.kind || 'group' as const
           
-          console.log('[Wizard] Found existing binding for:', agentId, { channel, peerId, peerKind })
+          console.log('[Wizard] Found existing binding for:', agentId, { channel, accountId, peerId, peerKind })
           
           return {
             agentId,
+            accountId,
             channel,
             peerId,
             peerKind,
@@ -1223,6 +1225,7 @@ async function handleNext() {
         
         return {
           agentId,
+          accountId: agentId,
           channel: 'feishu',
           peerId: '',
           peerKind: 'group' as const,
@@ -1518,6 +1521,7 @@ async function executeConfigUpdate() {
     const newBinding = {
       match: {
         channel: binding.channel,
+        accountId: binding.accountId || binding.agentId,
         peer: binding.peerId ? {
           kind: binding.peerKind || 'group',
           id: binding.peerId,
