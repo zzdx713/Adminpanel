@@ -2443,4 +2443,26 @@ export default {
       scrollToZoom: 'Scroll to zoom',
     },
   },
+  notifications: {
+    title: 'Notifications',
+    tabs: {
+      recent: 'Recent',
+      unread: 'Unread',
+    },
+    markAllRead: 'Mark all read',
+    clearAll: 'Clear all',
+    empty: 'No notifications',
+    markRead: 'Mark as read',
+  },
+  rbac: {
+    title: 'Access Control',
+    roles: {
+      admin: 'Admin',
+      operator: 'Operator',
+      readonly: 'Read-only',
+    },
+    permission: {
+      denied: 'You do not have permission to perform this action',
+    },
+  },
 } as const

@@ -2447,4 +2447,26 @@ export default {
       scrollToZoom: '滚轮缩放',
     },
   },
+  notifications: {
+    title: '通知中心',
+    tabs: {
+      recent: '最近',
+      unread: '未读',
+    },
+    markAllRead: '全部已读',
+    clearAll: '清空',
+    empty: '暂无通知',
+    markRead: '标记已读',
+  },
+  rbac: {
+    title: '权限管理',
+    roles: {
+      admin: '管理员',
+      operator: '操作员',
+      readonly: '只读',
+    },
+    permission: {
+      denied: '您没有权限执行此操作',
+    },
+  },
 } as const

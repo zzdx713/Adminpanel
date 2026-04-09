@@ -10,6 +10,8 @@ import { useLocaleStore } from '@/stores/locale'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useWideModeStore } from '@/stores/wideMode'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
+import NotificationCenter from '@/components/common/NotificationCenter.vue'
+import RoleTag from '@/components/common/RoleTag.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,6 +55,10 @@ async function handleLogout() {
 
     <NSpace :size="8" align="center">
       <ConnectionStatus />
+
+      <NotificationCenter />
+
+      <RoleTag />
 
       <NTooltip>
         <template #trigger>

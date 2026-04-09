@@ -4,6 +4,7 @@ import { OpenClawWebSocket } from '@/api/websocket'
 import { RPCClient } from '@/api/rpc-client'
 import { ConnectionState } from '@/api/types'
 import { useAuthStore } from './auth'
+import { useNotificationStore } from './notification'
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -68,6 +69,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
     ws.value.on('failed', (reason: unknown) => {
       lastError.value = reason as string
+      try { useNotificationStore().error('连接失败', String(reason)) } catch (_) {}
     })
 
     ws.value.on('connected', (payload: unknown) => {
@@ -92,6 +94,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     ws.value.on('disconnected', (code: unknown, reason: unknown) => {
       if (state.value !== ConnectionState.DISCONNECTED && state.value !== ConnectionState.FAILED) {
         lastError.value = `Connection closed (code: ${String(code)}, reason: ${String(reason || 'n/a')})`
+        try { useNotificationStore().handleGatewayDisconnect() } catch (_) {}
       }
     })
 
