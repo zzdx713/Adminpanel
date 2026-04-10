@@ -58,13 +58,17 @@ const chartOption = computed(() => {
       text: props.config.title,
       left: 'center',
     },
-    tooltip: {
+    tooltip: props.config.tooltip ? {
       trigger: props.config.type === 'pie' ? 'item' : 'axis',
       ...props.config.tooltip,
+    } : {
+      trigger: props.config.type === 'pie' ? 'item' : 'axis',
     },
-    legend: {
+    legend: props.config.legend ? {
       data: props.config.data.map(d => d.name),
       ...props.config.legend,
+    } : {
+      data: props.config.data.map(d => d.name),
     },
     grid: {
       left: '3%',
