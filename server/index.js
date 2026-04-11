@@ -21,6 +21,8 @@ import searchRoutes from './routes/search.routes.js'
 import statsRoutes from './routes/stats.routes.js'
 import rbacRoutes from './routes/rbac.routes.js'
 import themesRoutes from './routes/themes.routes.js'
+import importExportRoutes from './routes/import-export.routes.js'
+import monitoringRoutes from './routes/monitoring.routes.js'
 import {
   hashPassword, verifyPassword, generateToken, createSession,
   validateSession, invalidateSession, invalidateAllUserSessions,
@@ -2497,6 +2499,12 @@ app.get('/api/wizard/tasks/:id', authMiddleware, (req, res) => {
     res.status(500).json({ ok: false, error: { message: err.message } })
   }
 })
+
+// Import/Export Routes
+app.use('/api/import-export', importExportRoutes)
+
+// Monitoring Routes
+app.use('/api/monitoring', monitoringRoutes)
 
 app.post('/api/wizard/tasks', authMiddleware, requirePermission('wizard:manage'), (req, res) => {
   try {
