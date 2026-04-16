@@ -273,9 +273,19 @@ async function handleSaveConfig() {
   }
   configSaving.value = true
   try {
+    // 将扁平的键转换为嵌套的对象结构
     const changes: Record<string, unknown> = {}
     configModifiedFields.value.forEach(key => {
-      changes[key] = configValues.value[key]
+      const parts = key.split('.')
+      let current = changes
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i]!
+        if (!(part in current) || typeof current[part] !== 'object') {
+          current[part] = {}
+        }
+        current = current[part] as Record<string, unknown>
+      }
+      current[parts[parts.length - 1]!] = configValues.value[key]
     })
     await configStore.updateConfig(changes)
     originalConfigValues.value = { ...configValues.value }

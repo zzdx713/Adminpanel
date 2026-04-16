@@ -100,8 +100,14 @@ export interface HermesModel {
 
 // --- 配置相关 ---
 
+export interface HermesModelConfig {
+  default?: string
+  provider?: string
+  base_url?: string
+}
+
 export interface HermesConfig {
-  model?: string
+  model?: string | HermesModelConfig
   modelProvider?: string
   systemPrompt?: string
   temperature?: number
@@ -303,20 +309,21 @@ export interface HermesProviderConfig {
   defaultBaseUrl?: string
   docsUrl?: string
   recommended?: boolean
+  supportsModelList?: boolean
 }
 
 export const HERMES_PROVIDERS: HermesProviderConfig[] = [
-  { id: 'openrouter', name: 'OpenRouter', description: '推荐，支持 200+ 模型', envKey: 'OPENROUTER_API_KEY', baseUrlKey: 'OPENROUTER_BASE_URL', defaultBaseUrl: 'https://openrouter.ai/api/v1', docsUrl: 'https://openrouter.ai/keys', recommended: true },
-  { id: 'openai', name: 'OpenAI', envKey: 'OPENAI_API_KEY', baseUrlKey: 'OPENAI_BASE_URL', defaultBaseUrl: 'https://api.openai.com/v1', docsUrl: 'https://platform.openai.com/api-keys' },
-  { id: 'anthropic', name: 'Anthropic', envKey: 'ANTHROPIC_API_KEY', docsUrl: 'https://console.anthropic.com/' },
-  { id: 'google', name: 'Google Gemini', envKey: 'GOOGLE_API_KEY', baseUrlKey: 'GEMINI_BASE_URL', docsUrl: 'https://aistudio.google.com/app/apikey' },
-  { id: 'zhipu', name: 'z.ai / ZhipuAI GLM', envKey: 'GLM_API_KEY', baseUrlKey: 'GLM_BASE_URL', defaultBaseUrl: 'https://api.z.ai/api/paas/v4', docsUrl: 'https://open.bigmodel.cn/' },
-  { id: 'kimi', name: 'Kimi / Moonshot', envKey: 'KIMI_API_KEY', baseUrlKey: 'KIMI_BASE_URL', defaultBaseUrl: 'https://api.moonshot.ai/v1', docsUrl: 'https://platform.moonshot.cn/' },
-  { id: 'minimax', name: 'MiniMax', envKey: 'MINIMAX_API_KEY', baseUrlKey: 'MINIMAX_BASE_URL', defaultBaseUrl: 'https://api.minimax.io/v1', docsUrl: 'https://www.minimax.io/' },
-  { id: 'deepseek', name: 'DeepSeek', envKey: 'DEEPSEEK_API_KEY', baseUrlKey: 'DEEPSEEK_BASE_URL', defaultBaseUrl: 'https://api.deepseek.com/v1', docsUrl: 'https://platform.deepseek.com/' },
-  { id: 'huggingface', name: 'Hugging Face', envKey: 'HF_TOKEN', baseUrlKey: 'HF_BASE_URL', defaultBaseUrl: 'https://router.huggingface.co/v1', docsUrl: 'https://huggingface.co/settings/tokens' },
-  { id: 'nous', name: 'Nous Portal', envKey: 'NOUS_API_KEY', baseUrlKey: 'HERMES_PORTAL_BASE_URL', docsUrl: 'https://nousresearch.com/' },
-  { id: 'custom', name: '自定义端点', description: '配置自定义 OpenAI 兼容端点', envKey: 'OPENAI_API_KEY', baseUrlKey: 'OPENAI_BASE_URL' },
+  { id: 'openrouter', name: 'OpenRouter', description: '推荐，支持 200+ 模型', envKey: 'OPENROUTER_API_KEY', baseUrlKey: 'OPENROUTER_BASE_URL', defaultBaseUrl: 'https://openrouter.ai/api/v1', docsUrl: 'https://openrouter.ai/keys', recommended: true, supportsModelList: true },
+  { id: 'openai', name: 'OpenAI', envKey: 'OPENAI_API_KEY', baseUrlKey: 'OPENAI_BASE_URL', defaultBaseUrl: 'https://api.openai.com/v1', docsUrl: 'https://platform.openai.com/api-keys', supportsModelList: true },
+  { id: 'anthropic', name: 'Anthropic', envKey: 'ANTHROPIC_API_KEY', docsUrl: 'https://console.anthropic.com/', supportsModelList: true },
+  { id: 'google', name: 'Google Gemini', envKey: 'GOOGLE_API_KEY', baseUrlKey: 'GEMINI_BASE_URL', docsUrl: 'https://aistudio.google.com/app/apikey', supportsModelList: true },
+  { id: 'zhipu', name: 'z.ai / ZhipuAI GLM', envKey: 'GLM_API_KEY', baseUrlKey: 'GLM_BASE_URL', defaultBaseUrl: 'https://api.z.ai/api/paas/v4', docsUrl: 'https://open.bigmodel.cn/', supportsModelList: true },
+  { id: 'kimi', name: 'Kimi / Moonshot', envKey: 'KIMI_API_KEY', baseUrlKey: 'KIMI_BASE_URL', defaultBaseUrl: 'https://api.moonshot.ai/v1', docsUrl: 'https://platform.moonshot.cn/', supportsModelList: true },
+  { id: 'minimax', name: 'MiniMax', envKey: 'MINIMAX_API_KEY', baseUrlKey: 'MINIMAX_BASE_URL', defaultBaseUrl: 'https://api.minimax.io/v1', docsUrl: 'https://www.minimax.io/', supportsModelList: true },
+  { id: 'deepseek', name: 'DeepSeek', envKey: 'DEEPSEEK_API_KEY', baseUrlKey: 'DEEPSEEK_BASE_URL', defaultBaseUrl: 'https://api.deepseek.com/v1', docsUrl: 'https://platform.deepseek.com/', supportsModelList: true },
+  { id: 'huggingface', name: 'Hugging Face', envKey: 'HF_TOKEN', baseUrlKey: 'HF_BASE_URL', defaultBaseUrl: 'https://router.huggingface.co/v1', docsUrl: 'https://huggingface.co/settings/tokens', supportsModelList: true },
+  { id: 'nous', name: 'Nous Portal', envKey: 'NOUS_API_KEY', baseUrlKey: 'HERMES_PORTAL_BASE_URL', docsUrl: 'https://nousresearch.com/', supportsModelList: true },
+  { id: 'custom', name: '自定义端点', description: '配置自定义 OpenAI 兼容端点，需手动指定模型名称', envKey: 'OPENAI_API_KEY', baseUrlKey: 'OPENAI_BASE_URL', supportsModelList: false },
 ]
 
 // --- 配置 Schema 相关 ---

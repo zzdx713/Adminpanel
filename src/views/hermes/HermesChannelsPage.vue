@@ -525,187 +525,190 @@ const rules = {
     </NSpin>
 
     <!-- 编辑/新建模态框 -->
-    <NModal
-      v-model:show="showModal"
-      preset="card"
-      :title="modalMode === 'create' ? t('pages.hermesChannels.create') : t('pages.hermesChannels.configure')"
-      style="width: 500px; max-width: 90vw;"
-      :mask-closable="false"
-    >
-      <NForm
-        ref="formRef"
-        :model="formData"
-        :rules="rules"
-        label-placement="left"
-        label-width="auto"
+    <NModal v-model:show="showModal">
+      <NCard
+        style="width: 500px; max-width: 90vw;"
+        :title="modalMode === 'create' ? t('pages.hermesChannels.create') : t('pages.hermesChannels.configure')"
+        :bordered="false"
+        size="medium"
+        role="dialog"
+        aria-modal="true"
       >
-        <NFormItem :label="t('pages.hermesChannels.form.id')" path="id">
-          <NInput
-            v-model:value="formData.id"
-            :placeholder="t('pages.hermesChannels.form.idPlaceholder')"
-            :disabled="modalMode === 'edit'"
-          />
-        </NFormItem>
-        <NFormItem :label="t('pages.hermesChannels.form.name')" path="name">
-          <NInput
-            v-model:value="formData.name"
-            :placeholder="t('pages.hermesChannels.form.namePlaceholder')"
-          />
-        </NFormItem>
-        <NFormItem :label="t('pages.hermesChannels.form.type')" path="type">
-          <NSelect
-            v-model:value="formData.type"
-            :options="platformTypes"
-            :placeholder="t('pages.hermesChannels.form.typePlaceholder')"
-          />
-        </NFormItem>
+        <NForm
+          ref="formRef"
+          :model="formData"
+          :rules="rules"
+          label-placement="left"
+          label-width="auto"
+        >
+          <NFormItem :label="t('pages.hermesChannels.form.id')" path="id">
+            <NInput
+              v-model:value="formData.id"
+              :placeholder="t('pages.hermesChannels.form.idPlaceholder')"
+              :disabled="modalMode === 'edit'"
+            />
+          </NFormItem>
+          <NFormItem :label="t('pages.hermesChannels.form.name')" path="name">
+            <NInput
+              v-model:value="formData.name"
+              :placeholder="t('pages.hermesChannels.form.namePlaceholder')"
+            />
+          </NFormItem>
+          <NFormItem :label="t('pages.hermesChannels.form.type')" path="type">
+            <NSelect
+              v-model:value="formData.type"
+              :options="platformTypes"
+              :placeholder="t('pages.hermesChannels.form.typePlaceholder')"
+            />
+          </NFormItem>
 
-        <!-- 通用配置 -->
-        <template v-if="!chinaPlatformTypes.includes(formData.type)">
-          <NFormItem :label="t('pages.hermesChannels.form.token')" path="token">
-            <NInput
-              v-model:value="formData.token"
-              type="password"
-              show-password-on="click"
-              :placeholder="t('pages.hermesChannels.form.tokenPlaceholder')"
-            />
+          <!-- 通用配置 -->
+          <template v-if="!chinaPlatformTypes.includes(formData.type)">
+            <NFormItem :label="t('pages.hermesChannels.form.token')" path="token">
+              <NInput
+                v-model:value="formData.token"
+                type="password"
+                show-password-on="click"
+                :placeholder="t('pages.hermesChannels.form.tokenPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.apiKey')" path="apiKey">
+              <NInput
+                v-model:value="formData.apiKey"
+                type="password"
+                show-password-on="click"
+                :placeholder="t('pages.hermesChannels.form.apiKeyPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.apiBase')" path="apiBase">
+              <NInput
+                v-model:value="formData.apiBase"
+                :placeholder="t('pages.hermesChannels.form.apiBasePlaceholder')"
+              />
+            </NFormItem>
+          </template>
+
+          <!-- 企业微信配置 -->
+          <template v-if="formData.type === 'wecom'">
+            <NFormItem :label="t('pages.hermesChannels.form.corpId')" path="corpId">
+              <NInput
+                v-model:value="formData.corpId"
+                :placeholder="t('pages.hermesChannels.form.corpIdPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.agentId')" path="agentId">
+              <NInput
+                v-model:value="formData.agentId"
+                :placeholder="t('pages.hermesChannels.form.agentIdPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.secret')" path="secret">
+              <NInput
+                v-model:value="formData.secret"
+                type="password"
+                show-password-on="click"
+                :placeholder="t('pages.hermesChannels.form.secretPlaceholder')"
+              />
+            </NFormItem>
+          </template>
+
+          <!-- 钉钉配置 -->
+          <template v-if="formData.type === 'dingtalk'">
+            <NFormItem :label="t('pages.hermesChannels.form.clientId')" path="clientId">
+              <NInput
+                v-model:value="formData.clientId"
+                :placeholder="t('pages.hermesChannels.form.clientIdPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.clientSecret')" path="clientSecret">
+              <NInput
+                v-model:value="formData.clientSecret"
+                type="password"
+                show-password-on="click"
+                :placeholder="t('pages.hermesChannels.form.clientSecretPlaceholder')"
+              />
+            </NFormItem>
+          </template>
+
+          <!-- 飞书配置 -->
+          <template v-if="formData.type === 'feishu'">
+            <NFormItem :label="t('pages.hermesChannels.form.appId')" path="appId">
+              <NInput
+                v-model:value="formData.appId"
+                :placeholder="t('pages.hermesChannels.form.appIdPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.appSecret')" path="appSecret">
+              <NInput
+                v-model:value="formData.appSecret"
+                type="password"
+                show-password-on="click"
+                :placeholder="t('pages.hermesChannels.form.appSecretPlaceholder')"
+              />
+            </NFormItem>
+          </template>
+
+          <!-- 微信配置 -->
+          <template v-if="formData.type === 'wechat'">
+            <NFormItem :label="t('pages.hermesChannels.form.appId')" path="appId">
+              <NInput
+                v-model:value="formData.appId"
+                :placeholder="t('pages.hermesChannels.form.appIdPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.appSecret')" path="appSecret">
+              <NInput
+                v-model:value="formData.appSecret"
+                type="password"
+                show-password-on="click"
+                :placeholder="t('pages.hermesChannels.form.appSecretPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.token')" path="token">
+              <NInput
+                v-model:value="formData.token"
+                :placeholder="t('pages.hermesChannels.form.tokenPlaceholder')"
+              />
+            </NFormItem>
+          </template>
+
+          <!-- QQ配置 -->
+          <template v-if="formData.type === 'qq'">
+            <NFormItem :label="t('pages.hermesChannels.form.appId')" path="appId">
+              <NInput
+                v-model:value="formData.appId"
+                :placeholder="t('pages.hermesChannels.form.appIdPlaceholder')"
+              />
+            </NFormItem>
+            <NFormItem :label="t('pages.hermesChannels.form.secret')" path="secret">
+              <NInput
+                v-model:value="formData.secret"
+                type="password"
+                show-password-on="click"
+                :placeholder="t('pages.hermesChannels.form.secretPlaceholder')"
+              />
+            </NFormItem>
+          </template>
+
+          <NFormItem :label="t('pages.hermesChannels.form.requireMention')" path="requireMention">
+            <NSwitch v-model:value="formData.requireMention" />
           </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.apiKey')" path="apiKey">
-            <NInput
-              v-model:value="formData.apiKey"
-              type="password"
-              show-password-on="click"
-              :placeholder="t('pages.hermesChannels.form.apiKeyPlaceholder')"
-            />
+          <NFormItem :label="t('pages.hermesChannels.form.enabled')" path="enabled">
+            <NSwitch v-model:value="formData.enabled" />
           </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.apiBase')" path="apiBase">
-            <NInput
-              v-model:value="formData.apiBase"
-              :placeholder="t('pages.hermesChannels.form.apiBasePlaceholder')"
-            />
-          </NFormItem>
+        </NForm>
+
+        <template #footer>
+          <NSpace justify="end">
+            <NButton @click="closeModal">
+              {{ t('common.cancel') }}
+            </NButton>
+            <NButton type="primary" @click="handleSave">
+              {{ t('common.save') }}
+            </NButton>
+          </NSpace>
         </template>
-
-        <!-- 企业微信配置 -->
-        <template v-if="formData.type === 'wecom'">
-          <NFormItem :label="t('pages.hermesChannels.form.corpId')" path="corpId">
-            <NInput
-              v-model:value="formData.corpId"
-              :placeholder="t('pages.hermesChannels.form.corpIdPlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.agentId')" path="agentId">
-            <NInput
-              v-model:value="formData.agentId"
-              :placeholder="t('pages.hermesChannels.form.agentIdPlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.secret')" path="secret">
-            <NInput
-              v-model:value="formData.secret"
-              type="password"
-              show-password-on="click"
-              :placeholder="t('pages.hermesChannels.form.secretPlaceholder')"
-            />
-          </NFormItem>
-        </template>
-
-        <!-- 钉钉配置 -->
-        <template v-if="formData.type === 'dingtalk'">
-          <NFormItem :label="t('pages.hermesChannels.form.clientId')" path="clientId">
-            <NInput
-              v-model:value="formData.clientId"
-              :placeholder="t('pages.hermesChannels.form.clientIdPlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.clientSecret')" path="clientSecret">
-            <NInput
-              v-model:value="formData.clientSecret"
-              type="password"
-              show-password-on="click"
-              :placeholder="t('pages.hermesChannels.form.clientSecretPlaceholder')"
-            />
-          </NFormItem>
-        </template>
-
-        <!-- 飞书配置 -->
-        <template v-if="formData.type === 'feishu'">
-          <NFormItem :label="t('pages.hermesChannels.form.appId')" path="appId">
-            <NInput
-              v-model:value="formData.appId"
-              :placeholder="t('pages.hermesChannels.form.appIdPlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.appSecret')" path="appSecret">
-            <NInput
-              v-model:value="formData.appSecret"
-              type="password"
-              show-password-on="click"
-              :placeholder="t('pages.hermesChannels.form.appSecretPlaceholder')"
-            />
-          </NFormItem>
-        </template>
-
-        <!-- 微信配置 -->
-        <template v-if="formData.type === 'wechat'">
-          <NFormItem :label="t('pages.hermesChannels.form.appId')" path="appId">
-            <NInput
-              v-model:value="formData.appId"
-              :placeholder="t('pages.hermesChannels.form.appIdPlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.appSecret')" path="appSecret">
-            <NInput
-              v-model:value="formData.appSecret"
-              type="password"
-              show-password-on="click"
-              :placeholder="t('pages.hermesChannels.form.appSecretPlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.token')" path="token">
-            <NInput
-              v-model:value="formData.token"
-              :placeholder="t('pages.hermesChannels.form.tokenPlaceholder')"
-            />
-          </NFormItem>
-        </template>
-
-        <!-- QQ配置 -->
-        <template v-if="formData.type === 'qq'">
-          <NFormItem :label="t('pages.hermesChannels.form.appId')" path="appId">
-            <NInput
-              v-model:value="formData.appId"
-              :placeholder="t('pages.hermesChannels.form.appIdPlaceholder')"
-            />
-          </NFormItem>
-          <NFormItem :label="t('pages.hermesChannels.form.secret')" path="secret">
-            <NInput
-              v-model:value="formData.secret"
-              type="password"
-              show-password-on="click"
-              :placeholder="t('pages.hermesChannels.form.secretPlaceholder')"
-            />
-          </NFormItem>
-        </template>
-
-        <NFormItem :label="t('pages.hermesChannels.form.requireMention')" path="requireMention">
-          <NSwitch v-model:value="formData.requireMention" />
-        </NFormItem>
-        <NFormItem :label="t('pages.hermesChannels.form.enabled')" path="enabled">
-          <NSwitch v-model:value="formData.enabled" />
-        </NFormItem>
-      </NForm>
-
-      <template #footer>
-        <NSpace justify="end">
-          <NButton @click="closeModal">
-            {{ t('common.cancel') }}
-          </NButton>
-          <NButton type="primary" @click="handleSave">
-            {{ t('common.save') }}
-          </NButton>
-        </NSpace>
-      </template>
+      </NCard>
     </NModal>
   </div>
 </template>

@@ -41,8 +41,26 @@ function isModified(key: string): boolean {
   return props.modified[key] || false
 }
 
+/**
+ * 获取嵌套路径的值
+ * 支持 'terminal.backend' 这样的路径访问 values.terminal.backend
+ */
 function getValue(key: string): unknown {
-  return props.values[key]
+  const parts = key.split('.')
+  let value: unknown = props.values
+  
+  for (const part of parts) {
+    if (value === null || value === undefined) {
+      return undefined
+    }
+    if (typeof value === 'object') {
+      value = (value as Record<string, unknown>)[part]
+    } else {
+      return undefined
+    }
+  }
+  
+  return value
 }
 </script>
 

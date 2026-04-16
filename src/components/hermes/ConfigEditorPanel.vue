@@ -49,12 +49,53 @@ const localValues = ref<Record<string, unknown>>({})
 const originalValues = ref<Record<string, unknown>>({})
 const yamlContent = ref('')
 
+/**
+ * 获取嵌套路径的值
+ * 支持 'terminal.backend' 这样的路径访问 obj.terminal.backend
+ */
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split('.')
+  let value: unknown = obj
+  
+  for (const part of parts) {
+    if (value === null || value === undefined) {
+      return undefined
+    }
+    if (typeof value === 'object') {
+      value = (value as Record<string, unknown>)[part]
+    } else {
+      return undefined
+    }
+  }
+  
+  return value
+}
+
+/**
+ * 设置嵌套路径的值
+ * 支持 'terminal.backend' 这样的路径设置 obj.terminal.backend
+ */
+function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split('.')
+  let current: Record<string, unknown> = obj
+  
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i]!
+    if (!(part in current) || typeof current[part] !== 'object' || current[part] === null) {
+      current[part] = {}
+    }
+    current = current[part] as Record<string, unknown>
+  }
+  
+  current[parts[parts.length - 1]!] = value
+}
+
 const categoriesWithModified = computed(() => {
   return props.schema.categories.map((cat) => {
     const catFields = props.schema.fields[cat.id] || []
     const modifiedCount = catFields.filter((field) => {
-      const original = originalValues.value[field.key]
-      const current = localValues.value[field.key]
+      const original = getNestedValue(originalValues.value, field.key)
+      const current = getNestedValue(localValues.value, field.key)
       return JSON.stringify(original) !== JSON.stringify(current)
     }).length
     return { ...cat, modifiedCount }
@@ -73,10 +114,14 @@ const currentFields = computed(() => {
 
 const modified = computed(() => {
   const result: Record<string, boolean> = {}
-  for (const key of Object.keys(localValues.value)) {
-    const original = originalValues.value[key]
-    const current = localValues.value[key]
-    result[key] = JSON.stringify(original) !== JSON.stringify(current)
+  // 遍历所有字段定义来检查修改状态
+  for (const category of props.schema.categories) {
+    const fields = props.schema.fields[category.id] || []
+    for (const field of fields) {
+      const original = getNestedValue(originalValues.value, field.key)
+      const current = getNestedValue(localValues.value, field.key)
+      result[field.key] = JSON.stringify(original) !== JSON.stringify(current)
+    }
   }
   return result
 })
@@ -111,12 +156,13 @@ function handleCategoryChange(categoryId: string) {
 }
 
 function handleValueChange(key: string, value: unknown) {
-  localValues.value[key] = value
+  setNestedValue(localValues.value, key, value)
   emit('update:modelValue', { ...localValues.value })
 }
 
 function handleReset(key: string) {
-  localValues.value[key] = originalValues.value[key]
+  const originalValue = getNestedValue(originalValues.value, key)
+  setNestedValue(localValues.value, key, originalValue)
   emit('update:modelValue', { ...localValues.value })
 }
 

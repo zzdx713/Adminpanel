@@ -49,7 +49,12 @@ const activeTab = ref('models')
 const searchQuery = ref('')
 const providerFilter = ref<string | null>(null)
 
-const currentModelFromConfig = computed(() => configStore.config?.model || '')
+const currentModelFromConfig = computed(() => {
+  const model = configStore.config?.model
+  if (!model) return ''
+  if (typeof model === 'string') return model
+  return model.default || ''
+})
 
 // ---- 统计数据 ----
 
@@ -140,20 +145,28 @@ const editingProvider = ref<HermesProviderConfig | null>(null)
 const showConfigForm = ref(false)
 const configFormApiKey = ref('')
 const configFormBaseUrl = ref('')
+const configFormModel = ref('')
 const configFormSaving = ref(false)
 
 function getProviderEnvVar(provider: HermesProviderConfig): HermesEnvVar | undefined {
-  return modelStore.envVars.find((v) => v.key === provider.envKey)
+  const vars = modelStore.envVars
+  if (!Array.isArray(vars)) return undefined
+  return vars.find((v) => v.key === provider.envKey)
 }
 
 function getProviderBaseUrlVar(provider: HermesProviderConfig): HermesEnvVar | undefined {
   if (!provider.baseUrlKey) return undefined
-  return modelStore.envVars.find((v) => v.key === provider.baseUrlKey)
+  const vars = modelStore.envVars
+  if (!Array.isArray(vars)) return undefined
+  return vars.find((v) => v.key === provider.baseUrlKey)
 }
 
 function isProviderConfigured(provider: HermesProviderConfig): boolean {
   const envVar = getProviderEnvVar(provider)
-  return !!envVar && !!envVar.value
+  if (!envVar) return false
+  if (envVar.value && envVar.value.trim()) return true
+  if (envVar.masked) return true
+  return false
 }
 
 function maskApiKey(value: string): string {
@@ -165,17 +178,32 @@ function maskApiKey(value: string): string {
 
 function getProviderDisplayApiKey(provider: HermesProviderConfig): string {
   const envVar = getProviderEnvVar(provider)
-  if (!envVar || !envVar.value) return ''
+  if (!envVar) return ''
+  if (!envVar.value || !envVar.value.trim()) {
+    if (envVar.masked) return '********'
+    return ''
+  }
   if (revealedKeys.value.has(provider.envKey)) {
     return envVar.value
   }
+  if (envVar.masked) return '********'
   return maskApiKey(envVar.value)
 }
 
-function getProviderDisplayBaseUrl(provider: HermesProviderConfig): string {
-  const envVar = getProviderBaseUrlVar(provider)
-  if (!envVar || !envVar.value) return provider.defaultBaseUrl || ''
-  if (revealedKeys.value.has(provider.baseUrlKey!)) {
+function getProviderDisplayBaseUrl(provider: HermesProviderConfig): HermesEnvVar | undefined {
+  if (!provider.baseUrlKey) return undefined
+  const vars = modelStore.envVars
+  if (!Array.isArray(vars)) return undefined
+  return vars.find((v) => v.key === provider.baseUrlKey)
+}
+
+function getProviderDisplayBaseUrlValue(provider: HermesProviderConfig): string {
+  const envVar = getProviderDisplayBaseUrl(provider)
+  if (!envVar) return provider.defaultBaseUrl || ''
+  if (!envVar.value || !envVar.value.trim()) {
+    return provider.defaultBaseUrl || ''
+  }
+  if (revealedKeys.value.has(provider.baseUrlKey!) && !envVar.masked) {
     return envVar.value
   }
   return envVar.value
@@ -185,13 +213,15 @@ async function handleOpenConfig(provider: HermesProviderConfig) {
   editingProvider.value = provider
   configFormApiKey.value = ''
   configFormBaseUrl.value = provider.defaultBaseUrl || ''
+  configFormModel.value = ''
   showConfigForm.value = true
 }
 
 async function handleEditConfig(provider: HermesProviderConfig) {
   editingProvider.value = provider
   configFormApiKey.value = ''
-  configFormBaseUrl.value = getProviderBaseUrlVar(provider)?.value || provider.defaultBaseUrl || ''
+  configFormBaseUrl.value = getProviderDisplayBaseUrlValue(provider)
+  configFormModel.value = currentModelFromConfig.value || ''
   showConfigForm.value = true
 }
 
@@ -200,6 +230,7 @@ function handleCancelConfig() {
   showConfigForm.value = false
   configFormApiKey.value = ''
   configFormBaseUrl.value = ''
+  configFormModel.value = ''
 }
 
 async function handleSaveConfig() {
@@ -212,6 +243,17 @@ async function handleSaveConfig() {
     }
     if (editingProvider.value.baseUrlKey && configFormBaseUrl.value.trim()) {
       await modelStore.setEnvVar(editingProvider.value.baseUrlKey, configFormBaseUrl.value.trim())
+    }
+    if (configFormModel.value.trim()) {
+      const isCustomEndpoint = editingProvider.value.id === 'custom'
+      if (isCustomEndpoint) {
+        await modelStore.setCurrentModel(configFormModel.value.trim(), {
+          provider: 'openai',
+          baseUrl: configFormBaseUrl.value.trim() || undefined,
+        })
+      } else {
+        await modelStore.setCurrentModel(configFormModel.value.trim())
+      }
     }
     message.success(t('pages.hermesModels.providerConfig.saveSuccess'))
     handleCancelConfig()
@@ -245,9 +287,12 @@ async function handleRevealKey(provider: HermesProviderConfig) {
   try {
     const value = await modelStore.revealEnvVar(provider.envKey)
     revealedKeys.value.add(provider.envKey)
-    const idx = modelStore.envVars.findIndex((v) => v.key === provider.envKey)
-    if (idx >= 0) {
-      modelStore.envVars[idx] = { ...modelStore.envVars[idx]!, value, masked: false }
+    const vars = modelStore.envVars
+    if (Array.isArray(vars)) {
+      const idx = vars.findIndex((v) => v.key === provider.envKey)
+      if (idx >= 0) {
+        vars[idx] = { ...vars[idx]!, value, masked: false }
+      }
     }
   } catch {
     message.error(t('pages.hermesModels.providerConfig.revealFailed'))
@@ -259,9 +304,12 @@ async function handleRevealBaseUrl(provider: HermesProviderConfig) {
   try {
     const value = await modelStore.revealEnvVar(provider.baseUrlKey)
     revealedKeys.value.add(provider.baseUrlKey)
-    const idx = modelStore.envVars.findIndex((v) => v.key === provider.baseUrlKey)
-    if (idx >= 0) {
-      modelStore.envVars[idx] = { ...modelStore.envVars[idx]!, value, masked: false }
+    const vars = modelStore.envVars
+    if (Array.isArray(vars)) {
+      const idx = vars.findIndex((v) => v.key === provider.baseUrlKey)
+      if (idx >= 0) {
+        vars[idx] = { ...vars[idx]!, value, masked: false }
+      }
     }
   } catch {
     message.error(t('pages.hermesModels.providerConfig.revealFailed'))
@@ -269,8 +317,11 @@ async function handleRevealBaseUrl(provider: HermesProviderConfig) {
 }
 
 async function handleTabChange(tab: string) {
-  if (tab === 'providers' && modelStore.envVars.length === 0) {
-    await modelStore.fetchEnvVars()
+  if (tab === 'providers') {
+    const vars = modelStore.envVars
+    if (!Array.isArray(vars) || vars.length === 0) {
+      await modelStore.fetchEnvVars()
+    }
   }
 }
 
@@ -542,9 +593,9 @@ async function handleSetModel(modelId: string) {
                   </div>
                   <div v-if="provider.baseUrlKey" class="config-item">
                     <NText depth="3" class="config-label">Base URL:</NText>
-                    <NText class="config-value">{{ getProviderDisplayBaseUrl(provider) }}</NText>
+                    <NText class="config-value">{{ getProviderDisplayBaseUrlValue(provider) }}</NText>
                     <NButton
-                      v-if="getProviderBaseUrlVar(provider)?.masked && !revealedKeys.has(provider.baseUrlKey)"
+                      v-if="getProviderDisplayBaseUrl(provider)?.masked && !revealedKeys.has(provider.baseUrlKey)"
                       size="tiny"
                       quaternary
                       class="app-toolbar-btn"
@@ -651,6 +702,22 @@ async function handleSetModel(modelId: string) {
             />
           </div>
 
+          <div>
+            <NText strong style="font-size: 14px; display: block; margin-bottom: 8px;">
+              {{ t('pages.hermesModels.providerConfig.defaultModel') }}
+              <NTag v-if="!editingProvider.supportsModelList" type="error" size="small" :bordered="false" round style="margin-left: 4px;">
+                {{ t('common.required') }}
+              </NTag>
+            </NText>
+            <NText depth="3" style="font-size: 12px; display: block; margin-bottom: 8px;">
+              {{ editingProvider.supportsModelList ? t('pages.hermesModels.providerConfig.defaultModelHint') : t('pages.hermesModels.providerConfig.defaultModelHintCustom') }}
+            </NText>
+            <NInput
+              v-model:value="configFormModel"
+              :placeholder="t('pages.hermesModels.providerConfig.defaultModelPlaceholder')"
+            />
+          </div>
+
           <NSpace :size="8" justify="end">
             <NButton class="app-toolbar-btn" @click="handleCancelConfig">
               {{ t('common.cancel') }}
@@ -659,7 +726,7 @@ async function handleSetModel(modelId: string) {
               type="primary"
               class="app-toolbar-btn"
               :loading="configFormSaving"
-              :disabled="!configFormApiKey.trim() && !isProviderConfigured(editingProvider)"
+              :disabled="(!configFormApiKey.trim() && !isProviderConfigured(editingProvider)) || (!editingProvider.supportsModelList && !configFormModel.trim())"
               @click="handleSaveConfig"
             >
               {{ t('common.save') }}

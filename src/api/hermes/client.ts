@@ -5,6 +5,7 @@ import type {
   HermesMessage,
   HermesModel,
   HermesConfig,
+  HermesModelConfig,
   HermesCronJob,
   HermesSkill,
   HermesToolset,
@@ -449,10 +450,17 @@ export class HermesApiClient {
     return result.data || result.models || []
   }
 
-  async setCurrentModel(modelId: string): Promise<void> {
+  async setCurrentModel(modelId: string, options?: { provider?: string; baseUrl?: string }): Promise<void> {
+    const modelConfig: HermesModelConfig = { default: modelId }
+    if (options?.provider) {
+      modelConfig.provider = options.provider
+    }
+    if (options?.baseUrl) {
+      modelConfig.base_url = options.baseUrl
+    }
     await this.request('/config', {
       method: 'PUT',
-      body: JSON.stringify({ model: modelId }),
+      body: JSON.stringify({ config: { model: modelConfig } }),
     })
   }
 
@@ -499,7 +507,14 @@ export class HermesApiClient {
   // --------------------------------------------------------------------------
 
   async listEnvVars(): Promise<HermesEnvVar[]> {
-    return this.request<HermesEnvVar[]>('/env')
+    const result = await this.request<any>('/env')
+    if (Array.isArray(result)) return result
+    if (result && typeof result === 'object') {
+      if (Array.isArray(result.envVars)) return result.envVars
+      if (Array.isArray(result.data)) return result.data
+      if (Array.isArray(result.variables)) return result.variables
+    }
+    return []
   }
 
   async setEnvVar(key: string, value: string): Promise<void> {

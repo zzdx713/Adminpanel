@@ -43,7 +43,7 @@ export const useHermesModelStore = defineStore('hermes-model', () => {
   /**
    * 设置当前模型（通过配置 API）
    */
-  async function setCurrentModel(modelId: string) {
+  async function setCurrentModel(modelId: string, options?: { provider?: string; baseUrl?: string }) {
     const connStore = useHermesConnectionStore()
     const client = await connStore.getClientAsync()
     if (!client) {
@@ -53,7 +53,7 @@ export const useHermesModelStore = defineStore('hermes-model', () => {
     lastError.value = null
 
     try {
-      await client.setCurrentModel(modelId)
+      await client.setCurrentModel(modelId, options)
       currentModel.value = modelId
     } catch (error) {
       lastError.value = error instanceof Error ? error.message : String(error)
