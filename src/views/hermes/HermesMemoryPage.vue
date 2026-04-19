@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, h } from 'vue'
+import { onMounted, ref, computed, h, watch } from 'vue'
 import {
   NAlert,
   NButton,
@@ -33,6 +33,7 @@ import {
   CreateOutline,
   DocumentTextOutline,
   SparklesOutline,
+  FolderOutline,
 } from '@vicons/ionicons5'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -122,31 +123,73 @@ const formRules: FormRules = {
   ],
 }
 
-// SOUL.md 相关状态
-const soulMdContent = ref('')
-const soulMdPath = ref('')
-const soulMdUpdatedAt = ref<string | null>(null)
-const soulMdSize = ref(0)
-const loadingSoulMd = ref(false)
-const savingSoulMd = ref(false)
-const editorContent = ref('')
-const isEditing = ref(false)
+// 文件定义
+interface FileDef {
+  name: string
+  title: string
+  description: string
+  role: string
+}
 
-const hasUnsavedChanges = computed(() => editorContent.value !== soulMdContent.value)
-const charCount = computed(() => editorContent.value.length)
-const lineCount = computed(() => (editorContent.value ? editorContent.value.split(/\r?\n/).length : 0))
-const previewHtml = computed(() =>
-  renderSimpleMarkdown(soulMdContent.value || '', {
-    emptyHtml: `<p class="memory-markdown-empty">${t('pages.hermesMemory.soul.emptyContent')}</p>`,
-  })
-)
+const userFiles: FileDef[] = [
+  { name: 'USER.md', title: 'USER.md', description: t('pages.hermesMemory.files.userDesc'), role: t('pages.hermesMemory.files.userRole') },
+  { name: 'MEMORY.md', title: 'MEMORY.md', description: t('pages.hermesMemory.files.memoryDesc'), role: t('pages.hermesMemory.files.memoryRole') },
+]
 
-const fileUpdatedText = computed(() =>
-  soulMdUpdatedAt.value ? formatDate(soulMdUpdatedAt.value) : t('pages.hermesMemory.soul.notCreated')
-)
+const agentFiles: FileDef[] = [
+  { name: 'SOUL.md', title: 'SOUL.md', description: t('pages.hermesMemory.files.soulDesc'), role: t('pages.hermesMemory.files.soulRole') },
+  { name: 'IDENTITY.md', title: 'IDENTITY.md', description: t('pages.hermesMemory.files.identityDesc'), role: t('pages.hermesMemory.files.identityRole') },
+  { name: 'AGENTS.md', title: 'AGENTS.md', description: t('pages.hermesMemory.files.agentsDesc'), role: t('pages.hermesMemory.files.agentsRole') },
+  { name: 'TOOLS.md', title: 'TOOLS.md', description: t('pages.hermesMemory.files.toolsDesc'), role: t('pages.hermesMemory.files.toolsRole') },
+  { name: 'BOOTSTRAP.md', title: 'BOOTSTRAP.md', description: t('pages.hermesMemory.files.bootstrapDesc'), role: t('pages.hermesMemory.files.bootstrapRole') },
+]
 
-const fileSizeText = computed(() => formatBytes(soulMdSize.value))
+// 文件状态管理
+interface FileState {
+  content: string
+  path: string
+  updatedAt: string | null
+  size: number
+  loading: boolean
+  saving: boolean
+  editorContent: string
+  isEditing: boolean
+}
 
+const fileStates = ref<Record<string, FileState>>({})
+
+function initFileState(fileName: string): FileState {
+  if (!fileStates.value[fileName]) {
+    fileStates.value[fileName] = {
+      content: '',
+      path: '',
+      updatedAt: null,
+      size: 0,
+      loading: false,
+      saving: false,
+      editorContent: '',
+      isEditing: false,
+    }
+  }
+  return fileStates.value[fileName]
+}
+
+// 当前选中的文件
+const currentUserFile = ref<string>('USER.md')
+const currentAgentFile = ref<string>('SOUL.md')
+
+// 计算属性
+const hermesHome = computed(() => connStore.hermesStatus?.hermes_home || '')
+
+function getAuthHeaders() {
+  const token = authStore.token
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  }
+}
+
+// 配置相关函数
 async function fetchConfig() {
   loading.value = true
   lastError.value = null
@@ -208,26 +251,18 @@ function handleReset() {
   provider.value = originalConfig.value.provider || ''
 }
 
-// SOUL.md 相关函数
-const hermesHome = computed(() => connStore.hermesStatus?.hermes_home || '')
-
-function getAuthHeaders() {
-  const token = authStore.token
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  }
-}
-
-async function fetchSoulMd() {
+// 文件操作函数
+async function fetchFile(fileName: string) {
   if (!hermesHome.value) {
     console.warn('[HermesMemory] hermes_home not available')
     return
   }
   
-  loadingSoulMd.value = true
+  const state = initFileState(fileName)
+  state.loading = true
+  
   try {
-    const response = await fetch(`/api/files/get?path=${encodeURIComponent('SOUL.md')}&workspace=${encodeURIComponent(hermesHome.value)}`, {
+    const response = await fetch(`/api/files/get?path=${encodeURIComponent(fileName)}&workspace=${encodeURIComponent(hermesHome.value)}`, {
       headers: getAuthHeaders()
     })
     
@@ -235,106 +270,173 @@ async function fetchSoulMd() {
     
     if (!response.ok || !data.ok) {
       if (data.error?.message?.includes('not found') || data.error?.message?.includes('does not exist')) {
-        soulMdContent.value = ''
-        soulMdPath.value = `${hermesHome.value}/SOUL.md`
-        soulMdUpdatedAt.value = null
-        soulMdSize.value = 0
-        editorContent.value = ''
+        state.content = ''
+        state.path = `${hermesHome.value}/${fileName}`
+        state.updatedAt = null
+        state.size = 0
+        state.editorContent = ''
       } else {
-        throw new Error(data.error?.message || 'Failed to read SOUL.md')
+        throw new Error(data.error?.message || `Failed to read ${fileName}`)
       }
     } else {
-      soulMdContent.value = data.file?.content || ''
-      soulMdPath.value = `${hermesHome.value}/SOUL.md`
-      soulMdUpdatedAt.value = data.file?.modifiedAt || null
-      soulMdSize.value = data.file?.size || 0
-      editorContent.value = soulMdContent.value
+      state.content = data.file?.content || ''
+      state.path = `${hermesHome.value}/${fileName}`
+      state.updatedAt = data.file?.modifiedAt || null
+      state.size = data.file?.size || 0
+      state.editorContent = state.content
     }
   } catch (err) {
-    console.error('[HermesMemory] fetchSoulMd failed:', err)
-    soulMdContent.value = ''
+    console.error(`[HermesMemory] fetchFile(${fileName}) failed:`, err)
+    state.content = ''
   } finally {
-    loadingSoulMd.value = false
+    state.loading = false
   }
 }
 
-async function handleSaveSoulMd() {
+async function saveFile(fileName: string) {
   if (!hermesHome.value) {
     message.error('Hermes home not available')
     return
   }
   
-  savingSoulMd.value = true
+  const state = initFileState(fileName)
+  state.saving = true
+  
   try {
     const response = await fetch('/api/files/set', {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({
-        path: 'SOUL.md',
+        path: fileName,
         workspace: hermesHome.value,
-        content: editorContent.value
+        content: state.editorContent
       })
     })
     
     const data = await response.json()
     
     if (!response.ok || !data.ok) {
-      throw new Error(data.error?.message || 'Failed to save SOUL.md')
+      throw new Error(data.error?.message || `Failed to save ${fileName}`)
     }
     
-    soulMdContent.value = editorContent.value
-    soulMdUpdatedAt.value = data.file?.modifiedAt || new Date().toISOString()
-    soulMdSize.value = data.file?.size || editorContent.value.length
-    isEditing.value = false
-    message.success(t('pages.hermesMemory.soul.saved'))
+    state.content = state.editorContent
+    state.updatedAt = data.file?.modifiedAt || new Date().toISOString()
+    state.size = data.file?.size || state.editorContent.length
+    state.isEditing = false
+    message.success(t('pages.hermesMemory.files.saved', { file: fileName }))
   } catch (err) {
-    console.error('[HermesMemory] handleSaveSoulMd failed:', err)
+    console.error(`[HermesMemory] saveFile(${fileName}) failed:`, err)
     message.error(t('common.saveFailed'))
   } finally {
-    savingSoulMd.value = false
+    state.saving = false
   }
 }
 
-function handleStartEdit() {
-  isEditing.value = true
-  editorContent.value = soulMdContent.value
+function startEdit(fileName: string) {
+  const state = initFileState(fileName)
+  state.isEditing = true
+  state.editorContent = state.content
 }
 
-function handleCancelEdit() {
-  editorContent.value = soulMdContent.value
-  isEditing.value = false
+function cancelEdit(fileName: string) {
+  const state = initFileState(fileName)
+  state.editorContent = state.content
+  state.isEditing = false
 }
 
-function handleResetEditor() {
-  editorContent.value = soulMdContent.value
-  message.info(t('pages.hermesMemory.soul.resetToLoaded'))
+function resetEditor(fileName: string) {
+  const state = initFileState(fileName)
+  state.editorContent = state.content
+  message.info(t('pages.hermesMemory.files.resetToLoaded'))
 }
 
-async function handleRefreshSoulMd() {
-  if (isEditing.value && hasUnsavedChanges.value) {
-    if (!window.confirm(t('pages.hermesMemory.soul.discardConfirm'))) return
+async function refreshFile(fileName: string) {
+  const state = initFileState(fileName)
+  if (state.isEditing && state.editorContent !== state.content) {
+    if (!window.confirm(t('pages.hermesMemory.files.discardConfirm'))) return
   }
-  isEditing.value = false
-  await fetchSoulMd()
-  message.success(t('pages.hermesMemory.soul.refreshed'))
+  state.isEditing = false
+  await fetchFile(fileName)
+  message.success(t('pages.hermesMemory.files.refreshed'))
 }
 
-function formatBytes(value?: number): string {
+// 计算属性
+function getFileState(fileName: string) {
+  return initFileState(fileName)
+}
+
+function hasUnsavedChanges(fileName: string) {
+  const state = initFileState(fileName)
+  return state.editorContent !== state.content
+}
+
+function charCount(fileName: string) {
+  const state = initFileState(fileName)
+  return state.editorContent.length
+}
+
+function lineCount(fileName: string) {
+  const state = initFileState(fileName)
+  return state.editorContent ? state.editorContent.split(/\r?\n/).length : 0
+}
+
+function previewHtml(fileName: string) {
+  const state = initFileState(fileName)
+  return renderSimpleMarkdown(state.content || '', {
+    emptyHtml: `<p class="memory-markdown-empty">${t('pages.hermesMemory.files.emptyContent')}</p>`,
+  })
+}
+
+function fileUpdatedText(fileName: string) {
+  const state = initFileState(fileName)
+  return state.updatedAt ? formatDate(state.updatedAt) : t('pages.hermesMemory.files.notCreated')
+}
+
+function fileSizeText(fileName: string) {
+  const state = initFileState(fileName)
+  const value = state.size
   if (!value || value <= 0) return '-'
   if (value < 1024) return `${value} B`
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
   return `${(value / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function getFileDef(fileName: string): FileDef | undefined {
+  return [...userFiles, ...agentFiles].find(f => f.name === fileName)
+}
+
+// 加载所有文件
+async function loadAllFiles() {
+  for (const file of [...userFiles, ...agentFiles]) {
+    await fetchFile(file.name)
+  }
+}
+
+// 监听 Tab 切换，加载对应文件
+watch(currentUserFile, (fileName) => {
+  const state = initFileState(fileName)
+  if (!state.content && !state.loading) {
+    fetchFile(fileName)
+  }
+})
+
+watch(currentAgentFile, (fileName) => {
+  const state = initFileState(fileName)
+  if (!state.content && !state.loading) {
+    fetchFile(fileName)
+  }
+})
+
 onMounted(() => {
   fetchConfig()
-  fetchSoulMd()
+  loadAllFiles()
 })
 </script>
 
 <template>
   <div class="hermes-memory-page">
     <NTabs type="line" animated>
+      <!-- 功能开关 Tab -->
       <NTabPane name="config" :tab="t('pages.hermesMemory.sections.featureToggles')">
         <div class="tab-content">
           <NCard :bordered="false" class="app-card hermes-stats-panel">
@@ -509,129 +611,192 @@ onMounted(() => {
         </div>
       </NTabPane>
 
-      <NTabPane name="soul" tab="SOUL.md">
+      <!-- 用户文件 Tab -->
+      <NTabPane name="userFiles" :tab="t('pages.hermesMemory.sections.userFiles')">
         <div class="tab-content">
-          <NCard class="memory-hero" :bordered="false">
-            <template #header>
-              <div class="memory-hero-title">{{ t('pages.hermesMemory.soul.title') }}</div>
-            </template>
-            <template #header-extra>
-              <NSpace :size="8">
-                <NButton size="small" :loading="loadingSoulMd" @click="handleRefreshSoulMd">
-                  <template #icon><NIcon :component="RefreshOutline" /></template>
-                  {{ t('common.refresh') }}
-                </NButton>
-                <NButton v-if="!isEditing" size="small" type="primary" tertiary @click="handleStartEdit">
-                  <template #icon><NIcon :component="CreateOutline" /></template>
-                  {{ t('pages.hermesMemory.soul.edit') }}
-                </NButton>
-                <NButton v-else size="small" @click="handleCancelEdit">
-                  {{ t('pages.hermesMemory.soul.cancelEdit') }}
-                </NButton>
-                <NButton v-if="isEditing" size="small" type="primary" :loading="savingSoulMd" @click="handleSaveSoulMd">
-                  <template #icon><NIcon :component="SaveOutline" /></template>
-                  {{ t('pages.hermesMemory.soul.save') }}
-                </NButton>
-              </NSpace>
-            </template>
+          <NTabs type="segment" animated v-model:value="currentUserFile">
+            <NTabPane v-for="file in userFiles" :key="file.name" :name="file.name" :tab="file.title">
+              <FileEditor
+                :file-name="file.name"
+                :file-def="file"
+                :state="getFileState(file.name)"
+                @refresh="refreshFile(file.name)"
+                @edit="startEdit(file.name)"
+                @cancel="cancelEdit(file.name)"
+                @save="saveFile(file.name)"
+                @reset="resetEditor(file.name)"
+              />
+            </NTabPane>
+          </NTabs>
+        </div>
+      </NTabPane>
 
-            <NSpace vertical :size="10">
-              <NAlert type="info" :show-icon="true" :bordered="false">
-                {{ t('pages.hermesMemory.soul.description') }}
-              </NAlert>
-            </NSpace>
-
-            <div class="memory-toolbar">
-              <div class="memory-stats-inline">
-                <span>{{ t('pages.hermesMemory.soul.stats.chars', { count: charCount }) }}</span>
-                <span>{{ t('pages.hermesMemory.soul.stats.lines', { count: lineCount }) }}</span>
-                <span>{{ t('pages.hermesMemory.soul.stats.size', { size: fileSizeText }) }}</span>
-              </div>
-              <NSpace :size="6">
-                <NTag v-if="isEditing && hasUnsavedChanges" size="small" type="warning" :bordered="false" round>
-                  {{ t('pages.hermesMemory.soul.unsaved') }}
-                </NTag>
-              </NSpace>
-            </div>
-          </NCard>
-
-          <section class="memory-layout">
-            <div class="memory-main-column">
-              <NCard class="memory-card" :bordered="false">
-                <template #header>
-                  <div class="memory-main-header">
-                    <NSpace :size="6" align="center">
-                      <NIcon :component="DocumentTextOutline" />
-                      <NText strong>SOUL.md</NText>
-                    </NSpace>
-                    <NText depth="3" style="font-size: 12px;">{{ t('pages.hermesMemory.soul.editor.stats', { lines: lineCount, chars: charCount }) }}</NText>
-                  </div>
-                </template>
-
-                <template v-if="isEditing">
-                  <NInput
-                    v-model:value="editorContent"
-                    class="memory-editor"
-                    type="textarea"
-                    :autosize="{ minRows: 20, maxRows: 30 }"
-                    :placeholder="t('pages.hermesMemory.soul.editor.placeholder')"
-                  />
-                  <div class="memory-editor-footer">
-                    <NText depth="3">{{ t('pages.hermesMemory.soul.editor.saveHint') }}</NText>
-                    <NSpace :size="8">
-                      <NButton size="small" @click="handleResetEditor">{{ t('pages.hermesMemory.soul.actions.restore') }}</NButton>
-                      <NButton size="small" @click="handleCancelEdit">{{ t('common.cancel') }}</NButton>
-                      <NButton size="small" type="primary" :loading="savingSoulMd" @click="handleSaveSoulMd">{{ t('common.save') }}</NButton>
-                    </NSpace>
-                  </div>
-                </template>
-
-                <template v-else>
-                  <div class="memory-markdown" v-html="previewHtml"></div>
-                  <div class="memory-editor-footer">
-                    <NText depth="3">{{ t('pages.hermesMemory.soul.readonlyHint') }}</NText>
-                    <NButton size="small" type="primary" tertiary @click="handleStartEdit">
-                      <template #icon><NIcon :component="CreateOutline" /></template>
-                      {{ t('pages.hermesMemory.soul.edit') }}
-                    </NButton>
-                  </div>
-                </template>
-              </NCard>
-
-              <NCard class="memory-card" :bordered="false">
-                <template #header>
-                  <NSpace :size="6" align="center">
-                    <NIcon :component="SparklesOutline" />
-                    <NText strong>{{ t('pages.hermesMemory.soul.infoCard.title') }}</NText>
-                  </NSpace>
-                </template>
-
-                <div class="memory-meta-grid">
-                  <div class="memory-meta-item">
-                    <NText depth="3">{{ t('pages.hermesMemory.soul.infoCard.filePath') }}</NText>
-                    <code><NText>{{ soulMdPath || '~/.hermes/SOUL.md' }}</NText></code>
-                  </div>
-                  <div class="memory-meta-item">
-                    <NText depth="3">{{ t('pages.hermesMemory.soul.infoCard.updatedAt') }}</NText>
-                    <div>{{ fileUpdatedText }}</div>
-                  </div>
-                  <div class="memory-meta-item">
-                    <NText depth="3">{{ t('pages.hermesMemory.soul.infoCard.fileSize') }}</NText>
-                    <div>{{ fileSizeText }}</div>
-                  </div>
-                  <div class="memory-meta-item">
-                    <NText depth="3">{{ t('pages.hermesMemory.soul.infoCard.role') }}</NText>
-                    <div>{{ t('pages.hermesMemory.soul.infoCard.roleDesc') }}</div>
-                  </div>
-                </div>
-              </NCard>
-            </div>
-          </section>
+      <!-- 代理文件 Tab -->
+      <NTabPane name="agentFiles" :tab="t('pages.hermesMemory.sections.agentFiles')">
+        <div class="tab-content">
+          <NTabs type="segment" animated v-model:value="currentAgentFile">
+            <NTabPane v-for="file in agentFiles" :key="file.name" :name="file.name" :tab="file.title">
+              <FileEditor
+                :file-name="file.name"
+                :file-def="file"
+                :state="getFileState(file.name)"
+                @refresh="refreshFile(file.name)"
+                @edit="startEdit(file.name)"
+                @cancel="cancelEdit(file.name)"
+                @save="saveFile(file.name)"
+                @reset="resetEditor(file.name)"
+              />
+            </NTabPane>
+          </NTabs>
         </div>
       </NTabPane>
     </NTabs>
   </div>
 </template>
+
+<script lang="ts">
+// 子组件：文件编辑器
+const FileEditor = {
+  name: 'FileEditor',
+  props: {
+    fileName: { type: String, required: true },
+    fileDef: { type: Object, required: true },
+    state: { type: Object, required: true },
+  },
+  emits: ['refresh', 'edit', 'cancel', 'save', 'reset'],
+  setup(props: any, { emit }: any) {
+    const { t } = useI18n()
+    
+    const hasUnsavedChanges = computed(() => props.state.editorContent !== props.state.content)
+    const charCount = computed(() => props.state.editorContent?.length || 0)
+    const lineCount = computed(() => props.state.editorContent ? props.state.editorContent.split(/\r?\n/).length : 0)
+    
+    const previewHtml = computed(() =>
+      renderSimpleMarkdown(props.state.content || '', {
+        emptyHtml: `<p class="memory-markdown-empty">${t('pages.hermesMemory.files.emptyContent')}</p>`,
+      })
+    )
+    
+    const fileUpdatedText = computed(() =>
+      props.state.updatedAt ? formatDate(props.state.updatedAt) : t('pages.hermesMemory.files.notCreated')
+    )
+    
+    function formatBytes(value?: number): string {
+      if (!value || value <= 0) return '-'
+      if (value < 1024) return `${value} B`
+      if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+      return `${(value / (1024 * 1024)).toFixed(1)} MB`
+    }
+    
+    return () => h('div', { class: 'file-editor' }, [
+      h(NCard, { class: 'memory-hero', bordered: false }, {
+        header: () => h('div', { class: 'memory-hero-title' }, props.fileDef.title),
+        'header-extra': () => h(NSpace, { size: 8 }, () => [
+          h(NButton, { size: 'small', loading: props.state.loading, onClick: () => emit('refresh') }, {
+            icon: () => h(NIcon, { component: RefreshOutline }),
+            default: () => t('common.refresh'),
+          }),
+          !props.state.isEditing
+            ? h(NButton, { size: 'small', type: 'primary', tertiary: true, onClick: () => emit('edit') }, {
+                icon: () => h(NIcon, { component: CreateOutline }),
+                default: () => t('pages.hermesMemory.files.edit'),
+              })
+            : h(NButton, { size: 'small', onClick: () => emit('cancel') }, () => t('pages.hermesMemory.files.cancelEdit')),
+          props.state.isEditing
+            ? h(NButton, { size: 'small', type: 'primary', loading: props.state.saving, onClick: () => emit('save') }, {
+                icon: () => h(NIcon, { component: SaveOutline }),
+                default: () => t('pages.hermesMemory.files.save'),
+              })
+            : null,
+        ]),
+        default: () => [
+          h(NSpace, { vertical: true, size: 10 }, () => [
+            h(NAlert, { type: 'info', showIcon: true, bordered: false }, () => props.fileDef.description),
+          ]),
+          h('div', { class: 'memory-toolbar' }, [
+            h('div', { class: 'memory-stats-inline' }, [
+              h('span', null, t('pages.hermesMemory.files.stats.chars', { count: charCount.value })),
+              h('span', null, t('pages.hermesMemory.files.stats.lines', { count: lineCount.value })),
+              h('span', null, t('pages.hermesMemory.files.stats.size', { size: formatBytes(props.state.size) })),
+            ]),
+            h(NSpace, { size: 6 }, () =>
+              props.state.isEditing && hasUnsavedChanges.value
+                ? [h(NTag, { size: 'small', type: 'warning', bordered: false, round: true }, () => t('pages.hermesMemory.files.unsaved'))]
+                : []
+            ),
+          ]),
+        ],
+      }),
+      h('section', { class: 'memory-layout' }, [
+        h('div', { class: 'memory-main-column' }, [
+          h(NCard, { class: 'memory-card', bordered: false }, {
+            header: () => h('div', { class: 'memory-main-header' }, [
+              h(NSpace, { size: 6, align: 'center' }, () => [
+                h(NIcon, { component: DocumentTextOutline }),
+                h(NText, { strong: true }, () => props.fileName),
+              ]),
+              h(NText, { depth: 3, style: 'font-size: 12px;' }, () => t('pages.hermesMemory.files.editor.stats', { lines: lineCount.value, chars: charCount.value })),
+            ]),
+            default: () => props.state.isEditing
+              ? [
+                  h(NInput, {
+                    value: props.state.editorContent,
+                    'onUpdate:value': (val: string) => { props.state.editorContent = val },
+                    class: 'memory-editor',
+                    type: 'textarea',
+                    autosize: { minRows: 20, maxRows: 30 },
+                    placeholder: t('pages.hermesMemory.files.editor.placeholder'),
+                  }),
+                  h('div', { class: 'memory-editor-footer' }, [
+                    h(NText, { depth: 3 }, () => t('pages.hermesMemory.files.editor.saveHint')),
+                    h(NSpace, { size: 8 }, () => [
+                      h(NButton, { size: 'small', onClick: () => emit('reset') }, () => t('pages.hermesMemory.files.actions.restore')),
+                      h(NButton, { size: 'small', onClick: () => emit('cancel') }, () => t('common.cancel')),
+                      h(NButton, { size: 'small', type: 'primary', loading: props.state.saving, onClick: () => emit('save') }, () => t('common.save')),
+                    ]),
+                  ]),
+                ]
+              : [
+                  h('div', { class: 'memory-markdown', innerHTML: previewHtml.value }),
+                  h('div', { class: 'memory-editor-footer' }, [
+                    h(NText, { depth: 3 }, () => t('pages.hermesMemory.files.readonlyHint')),
+                    h(NButton, { size: 'small', type: 'primary', tertiary: true, onClick: () => emit('edit') }, {
+                      icon: () => h(NIcon, { component: CreateOutline }),
+                      default: () => t('pages.hermesMemory.files.edit'),
+                    }),
+                  ]),
+                ],
+          }),
+          h(NCard, { class: 'memory-card', bordered: false }, {
+            header: () => h(NSpace, { size: 6, align: 'center' }, () => [
+              h(NIcon, { component: SparklesOutline }),
+              h(NText, { strong: true }, () => t('pages.hermesMemory.files.infoCard.title')),
+            ]),
+            default: () => h('div', { class: 'memory-meta-grid' }, [
+              h('div', { class: 'memory-meta-item' }, [
+                h(NText, { depth: 3 }, () => t('pages.hermesMemory.files.infoCard.filePath')),
+                h('code', null, [h(NText, null, () => props.state.path || `~/.hermes/${props.fileName}`)]),
+              ]),
+              h('div', { class: 'memory-meta-item' }, [
+                h(NText, { depth: 3 }, () => t('pages.hermesMemory.files.infoCard.updatedAt')),
+                h('div', null, () => fileUpdatedText.value),
+              ]),
+              h('div', { class: 'memory-meta-item' }, [
+                h(NText, { depth: 3 }, () => t('pages.hermesMemory.files.infoCard.fileSize')),
+                h('div', null, () => formatBytes(props.state.size)),
+              ]),
+              h('div', { class: 'memory-meta-item' }, [
+                h(NText, { depth: 3 }, () => t('pages.hermesMemory.files.infoCard.role')),
+                h('div', null, () => props.fileDef.role),
+              ]),
+            ]),
+          }),
+        ]),
+      ]),
+    ])
+  },
+}
+</script>
 
 <style scoped>
 .hermes-memory-page {
@@ -729,7 +894,13 @@ onMounted(() => {
   transform: translateY(0);
 }
 
-/* SOUL.md 样式 */
+/* 文件编辑器样式 */
+.file-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .memory-hero {
   border-radius: var(--radius-lg);
   background:
@@ -953,85 +1124,6 @@ onMounted(() => {
   border-radius: 3px;
   border: 1px solid var(--md-code-border);
   background: var(--md-code-bg);
-}
-
-.memory-markdown :deep(.code-block-container) {
-  display: flex;
-  position: relative;
-  margin: 6px 0;
-  border-radius: 6px;
-  border: 1px solid var(--md-code-border);
-  background: var(--md-pre-bg);
-  overflow-x: auto;
-}
-
-.memory-markdown :deep(.code-block-container) pre {
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  overflow: visible;
-}
-
-.memory-markdown :deep(.code-line-numbers) {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 8px;
-  background: rgba(0, 0, 0, 0.03);
-  border-right: 1px solid var(--md-code-border);
-  text-align: right;
-  user-select: none;
-  min-width: 40px;
-}
-
-.memory-markdown :deep(.line-number) {
-  font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
-  font-size: 0.87em;
-  line-height: 1.52;
-  color: var(--text-tertiary);
-  padding: 0 4px;
-}
-
-.memory-markdown :deep(.code-content) {
-  flex: 1;
-  padding: 10px 12px;
-  overflow-x: auto;
-  min-width: 0;
-}
-
-.memory-markdown :deep(.code-content code) {
-  display: block;
-  font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
-  font-size: 0.87em;
-  line-height: 1.52;
-  white-space: pre;
-}
-
-.memory-markdown :deep(.code-copy-btn) {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 4px 6px;
-  border: 1px solid var(--md-code-border);
-  border-radius: 4px;
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease;
-}
-
-.memory-markdown :deep(.code-block-container:hover .code-copy-btn) {
-  opacity: 1;
-}
-
-.memory-markdown :deep(.code-copy-btn:hover) {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.memory-markdown :deep(.code-copy-btn.copied) {
-  color: var(--link-color);
 }
 
 .memory-markdown :deep(hr) {
