@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  openclaw-admin:
+    build: .
+    container_name: openclaw-admin
+    restart: always
+    network_mode: "host"  # 关键：满足官方要求 127.0.0.1 访问网关
+    ports:
+      - "3001:3001"
+    environment:
+      # ==================== 官方必填配置 ====================
+      - PORT=3001
+      - AUTH_USERNAME=admin
+      - AUTH_PASSWORD=admin
+
+      # OpenClaw 网关（本地运行）
+      - OPENCLAW_WS_URL=ws://127.0.0.1:18789
+      - OPENCLAW_AUTH_TOKEN=1212
+
+      # Hermes 网关（本地运行）
+      - HERMES_WEB_URL=http://127.0.0.1:9119
+      - HERMES_API_URL=http://127.0.0.1:8642
+      - HERMES_API_KEY=1212
+
+    volumes:
+      - ./.env:/app/.env  # 挂载本地环境变量
+      - ./data:/app/data  # 持久化数据

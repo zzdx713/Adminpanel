@@ -1,0 +1,36 @@
+services:
+  hermes:
+    image: nousresearch/hermes-agent:v2026.4.16
+    container_name: hermes
+    network_mode: host
+    restart: unless-stopped
+    command: gateway run
+    volumes:
+      - ./.hermes:/opt/data
+
+  hermes-dashboard:
+    image: nousresearch/hermes-agent:v2026.4.16
+    container_name: hermes-dashboard
+    network_mode: host
+    restart: unless-stopped
+    command: dashboard --host 0.0.0.0 --insecure
+    volumes:
+      - ./.hermes:/opt/data
+
+  openclaw-admin:
+    build: .
+    container_name: openclaw-admin
+    network_mode: host
+    restart: always
+    environment:
+      - PORT=3001
+      - HOST=0.0.0.0
+      - AUTH_USERNAME=admin
+      - AUTH_PASSWORD=admin
+      - OPENCLAW_WS_URL=ws://127.0.0.1:18789
+      - OPENCLAW_AUTH_TOKEN=1212
+      - HERMES_WEB_URL=http://127.0.0.1:9119
+      - HERMES_API_URL=http://127.0.0.1:8642
+    volumes:
+      - ./.env:/app/.env
+      - ./data:/app/data

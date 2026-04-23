@@ -1,0 +1,51 @@
+services:
+  openclaw-gateway:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw
+    network_mode: host  # ✅ 关键修复：和 admin 同网络
+    environment:
+      - OPENCLAW_GATEWAY_TOKEN=1212
+      - OPENCLAW_ALLOW_INSECURE_PRIVATE_WS=true
+    volumes:
+      - ./.openclaw/config:/root/.openclaw
+      - ./.openclaw/workspace:/root/.openclaw/workspace
+    user: root
+    init: true
+    restart: unless-stopped
+    command: ["node", "dist/index.js", "gateway", "--allow-unconfigured", "--bind", "loopback"]
+
+  hermes:
+    image: nousresearch/hermes-agent:v2026.4.16
+    container_name: hermes
+    network_mode: host
+    restart: unless-stopped
+    command: gateway run
+    volumes:
+      - ./.hermes:/opt/data
+
+  hermes-dashboard:
+    image: nousresearch/hermes-agent:v2026.4.16
+    container_name: hermes-dashboard
+    network_mode: host
+    restart: unless-stopped
+    command: dashboard --host 0.0.0.0 --insecure
+    volumes:
+      - ./.hermes:/opt/data
+
+  openclaw-admin:
+    build: .
+    container_name: openclaw-admin
+    network_mode: host
+    restart: always
+    environment:
+      - PORT=3001
+      - HOST=0.0.0.0
+      - AUTH_USERNAME=admin
+      - AUTH_PASSWORD=admin
+      - OPENCLAW_WS_URL=ws://127.0.0.1:18789
+      - OPENCLAW_AUTH_TOKEN=1212
+      - HERMES_WEB_URL=http://127.0.0.1:9119
+      - HERMES_API_URL=http://127.0.0.1:8642
+    volumes:
+      - ./.env:/app/.env
+      - ./data:/app/data
