@@ -371,6 +371,38 @@ npm run start
 ```
 
 ***
+增加docker部署
+部署adminpanel
+启动
+docker compose -f docker-compose-adminpanel.yml up -d
+查看日志
+docker compose -f docker-compose-adminpanel.yml logs -f
+关闭
+docker compose -f docker-compose-adminpanel.yml down
+测试使用最新版openclaw和hermesv4.16的镜像测试正常
+ghcr.io/openclaw/openclaw:latest
+nousresearch/hermes-agent:v2026.4.16
+部署adminpanel+hermes
+启动
+docker compose -f docker-compose-hermes.yml up -d
+查看日志
+docker compose -f docker-compose-hermes.yml logs -f
+关闭
+docker compose -f docker-compose-hermes.yml down
+部署adminpanel+openclaw
+启动
+docker compose -f docker-compose-openclaw.yml up -d
+查看日志
+docker compose -f docker-compose-openclaw.yml logs -f
+关闭
+docker compose -f docker-compose-openclaw.yml down
+部署adminpanel+hermes
+启动
+docker compose -f docker-compose-openclaw-hermes.yml up -d
+查看日志
+docker compose -f docker-compose-openclaw-hermes.yml logs -f
+关闭
+docker compose -f docker-compose-openclaw-hermes.yml down
 
 ## Hermes Agent 集成
 
